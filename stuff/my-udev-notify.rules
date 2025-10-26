@@ -4,3 +4,4 @@
 ACTION=="add",    RUN+="/bin/bash /path/to/my-udev-notify/my-udev-notify.sh -a add    -p '%p' -b '$attr{busnum}' -d '$attr{devnum}'"
 ACTION=="remove", RUN+="/bin/bash /path/to/my-udev-notify/my-udev-notify.sh -a remove -p '%p' -b '$attr{busnum}' -d '$attr{devnum}'"
 
+ACTION=="add",    SUBSYSTEM=="tty", RUN+="/bin/bash /path/to/my-udev-notify/my-udev-notify.sh -a serialport -s '%k'"

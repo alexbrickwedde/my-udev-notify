@@ -18,6 +18,9 @@ devlist_file="/var/tmp/udev-notify-devices"
 show_notifications=true
 notification_icons=true
 
+timeoutusb=5000
+timeoutserial=10000
+
 play_sounds=true
 use_espeak=false
 
@@ -38,6 +41,9 @@ unplug_sound_path="$DIR/sounds/unplug_sound.wav"
 
 # retrieve options from command line {{{
 
+# serialdev: "ttyUSB0", etc
+serialdev=""
+
 # action: "add" or "remove"
 action=
 
@@ -49,7 +55,7 @@ dev_path=
 bus_num=
 dev_num=
 
-while getopts a:p:b:d: opt; do
+while getopts a:p:b:d:s: opt; do
   case $opt in
   a)
       action=$OPTARG
@@ -62,6 +68,9 @@ while getopts a:p:b:d: opt; do
       ;;
   d)
       dev_num=$OPTARG
+      ;;
+  s)
+      serialdev="$OPTARG "
       ;;
   esac
 done
@@ -149,8 +158,9 @@ show_visual_notification()
    #       because 'who' echoes display number like (:0), and echoes nothing if no display,
    #       which is more convenient to parse.
 
-   local header=$1
-   local text=$2
+   local timeout=$1
+   local header=$2
+   local text=$3
 
    if [[ $notification_icons == true ]]; then
       get_device_icon "$text"
@@ -165,7 +175,7 @@ show_visual_notification()
    for (( i=0; i<${#logged_users[@]}; i=($i + 1) )); do
       cur_user=${logged_users[$i]}
 
-      su $cur_user -c "notify-send -i '$dev_icon' '$header' '$text'"
+      su $cur_user -c "notify-send -t '$timeout' -i '$dev_icon' '$header' '$text'"
    done
 }
 
@@ -190,7 +200,11 @@ sound_or_speak()
          fi
       else
          if [[ -r "$soundfile" ]]; then
-            su $cur_user -c "/usr/bin/play -q '$soundfile'"
+            if [ -x /usr/bin/aplay ]; then
+               su $cur_user -c "/usr/bin/aplay '$soundfile'"
+            else
+               su $cur_user -c "/usr/bin/play -q '$soundfile'"
+            fi
          fi
       fi
    done
@@ -204,7 +218,7 @@ notify_plugged()
 
    if [[ $show_notifications == true ]]; then
       #notify-send "device plugged" "$dev_title" &
-      show_visual_notification "device plugged" "$dev_title"
+      show_visual_notification "$timeoutusb" "device plugged" "$dev_title"
    fi
    
    if [[ $play_sounds == true ]]; then
@@ -221,7 +235,7 @@ notify_unplugged()
 
    if [[ $show_notifications == true ]]; then
       #notify-send "device unplugged" "$dev_title" &
-      show_visual_notification "device unplugged" "$dev_title"
+      show_visual_notification "$timeoutusb" "device unplugged" "$dev_title"
    fi
    
    if [[ $play_sounds == true ]]; then
@@ -237,6 +251,12 @@ notify_unplugged()
 
       "reboot" )
          rm $devlist_file
+         ;;
+
+      "serialport" )
+         if [[ $show_notifications == true ]]; then
+            show_visual_notification "$timeoutserial" "$serialdev" "serial port plugged" 
+         fi
          ;;
 
       "add" )
